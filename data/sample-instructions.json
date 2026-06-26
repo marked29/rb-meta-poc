@@ -1,0 +1,36 @@
+{
+  "version": "2026.06.001",
+  "title": "Equipment Pre-Operation Inspection",
+  "unit": "m",
+  "instructions": [
+    {
+      "id": "step-01",
+      "title": "Verify power source is disconnected",
+      "details": "Confirm the main breaker is in the OFF position and the lockout tag is applied before proceeding. Do not rely on indicator lights alone."
+    },
+    {
+      "id": "step-02",
+      "title": "Inspect housing for visible damage",
+      "details": "Check the outer casing for cracks, deformation, or impact marks. Pay attention to seams and mounting points."
+    },
+    {
+      "id": "step-03",
+      "title": "Confirm all fasteners are present",
+      "details": null
+    },
+    {
+      "id": "step-04",
+      "title": "Check fluid levels against the gauge",
+      "details": "Reading must sit between the MIN and MAX marks with the unit level. Top up with approved fluid only if below MIN."
+    },
+    {
+      "id": "step-05",
+      "title": "Test emergency stop button"
+    },
+    {
+      "id": "step-06",
+      "title": "Record inspection in the logbook",
+      "details": "Enter date, time, operator ID, and any anomalies observed. Sign and store the entry."
+    }
+  ]
+}

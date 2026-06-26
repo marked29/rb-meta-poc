@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta
+      name="viewport"
+      content="width=600, height=600, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    >
+    <meta
+      name="description"
+      content="Field checklist HUD web app for Meta Ray-Ban Display glasses."
+    >
+    <meta name="mrbd-compatible" content="yes">
+    <title>MRBD Field Checklist</title>
+    <link rel="stylesheet" href="styles.css?v=layout-20">
+  </head>
+  <body>
+    <main class="app-shell" aria-live="polite">
+      <header class="hud-layer">
+        <section class="compass" aria-label="Compass">
+          <div class="compass-status" id="compass-status">COMPASS --</div>
+          <div class="compass-window" aria-hidden="true">
+            <div class="compass-tape" id="compass-tape">
+              <span style="--mark-offset:-792px">N</span>
+              <span style="--mark-offset:-693px">NE</span>
+              <span style="--mark-offset:-594px">E</span>
+              <span style="--mark-offset:-495px">SE</span>
+              <span style="--mark-offset:-396px">S</span>
+              <span style="--mark-offset:-297px">SW</span>
+              <span style="--mark-offset:-198px">W</span>
+              <span style="--mark-offset:-99px">NW</span>
+              <span style="--mark-offset:0px">N</span>
+              <span style="--mark-offset:99px">NE</span>
+              <span style="--mark-offset:198px">E</span>
+              <span style="--mark-offset:297px">SE</span>
+              <span style="--mark-offset:396px">S</span>
+              <span style="--mark-offset:495px">SW</span>
+              <span style="--mark-offset:594px">W</span>
+              <span style="--mark-offset:693px">NW</span>
+              <span style="--mark-offset:792px">N</span>
+            </div>
+            <div class="compass-pointer"></div>
+          </div>
+        </section>
+
+        <section class="altitude" aria-label="Altitude">
+          <span id="altitude-value">ALT --</span>
+          <small id="altitude-accuracy"></small>
+        </section>
+      </header>
+
+      <section class="content-layer">
+        <section class="screen screen-loading" id="screen-loading">
+          <p class="eyebrow">FIELD CHECKLIST</p>
+          <h1>Loading instructions</h1>
+          <p class="message">Preparing the checklist.</p>
+        </section>
+
+        <section class="screen screen-empty hidden" id="screen-empty">
+          <p class="eyebrow">NO DATA</p>
+          <h1>No instructions available</h1>
+          <p class="message">Connect to load instructions, then reopen this app.</p>
+        </section>
+
+        <section class="screen screen-checklist hidden" id="screen-checklist">
+          <div class="checklist-meta">
+            <span id="checklist-title">Checklist</span>
+            <span id="checklist-position">0 / 0</span>
+          </div>
+
+          <article class="step-card">
+            <div class="step-status" id="step-status">PENDING</div>
+            <h1 id="step-title">Step title</h1>
+            <p class="step-hint" id="step-hint">
+              Enter marks done. Left/right change step. Up opens detail.
+            </p>
+          </article>
+
+          <div class="progress-rail" aria-hidden="true">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+        </section>
+
+        <section class="screen screen-detail hidden" id="screen-detail">
+          <div class="detail-meta">
+            <span id="detail-position">0 / 0</span>
+            <span>DETAIL</span>
+          </div>
+          <h1 id="detail-title">Step detail</h1>
+          <div class="detail-copy" id="detail-copy"></div>
+          <p class="step-hint">Down returns to the step.</p>
+        </section>
+
+        <section class="screen screen-completion hidden" id="screen-completion">
+          <p class="eyebrow">COMPLETE</p>
+          <h1>All steps complete</h1>
+          <p class="message">Inspection checklist is finished.</p>
+          <p class="step-hint">Enter restarts from the first step.</p>
+        </section>
+      </section>
+
+      <aside class="debug-panel hidden" id="debug-panel" aria-label="Debug panel">
+        <div><strong>state</strong> <span id="debug-state">-</span></div>
+        <div><strong>index</strong> <span id="debug-index">-</span></div>
+        <div><strong>checked</strong> <span id="debug-checked">-</span></div>
+        <div><strong>data</strong> <span id="debug-data-source">-</span></div>
+        <div><strong>heading</strong> <span id="debug-heading">-</span></div>
+        <div><strong>alt</strong> <span id="debug-altitude">-</span></div>
+      </aside>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,407 @@
+:root {
+  --bg: #1c1e21;
+  --panel: #24272c;
+  --panel-strong: #2d3138;
+  --text: #ffffff;
+  --text-soft: #e4e6eb;
+  --text-muted: #b0b3b8;
+  --accent: #4ecdc4;
+  --accent-strong: #7fffd8;
+  --success: #8cff8c;
+  --warning: #ffd166;
+  --danger: #ff6b6b;
+  --line: rgba(255, 255, 255, 0.16);
+  --shadow: rgba(0, 0, 0, 0.35);
+  --safe: 16px;
+  --gap: 16px;
+  --hud-height: 82px;
+  --compass-label-height: 24px;
+  --compass-window-height: 58px;
+  --altitude-width: 112px;
+  color-scheme: dark;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 600px;
+  height: 600px;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  display: grid;
+  place-items: center;
+}
+
+.app-shell {
+  position: relative;
+  width: 600px;
+  height: 600px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #202328 0%, #16181c 100%);
+}
+
+.hud-layer {
+  position: absolute;
+  top: var(--safe);
+  left: var(--safe);
+  right: var(--safe);
+  height: var(--hud-height);
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--altitude-width);
+  gap: var(--gap);
+  align-items: stretch;
+}
+
+.compass {
+  min-width: 0;
+  height: var(--hud-height);
+  display: grid;
+  grid-template-rows: var(--compass-label-height) var(--compass-window-height);
+}
+
+.compass-status {
+  height: var(--compass-label-height);
+  color: var(--text-soft);
+  font-size: 14px;
+  font-weight: 750;
+  line-height: var(--compass-label-height);
+  letter-spacing: 0;
+}
+
+.compass-window {
+  position: relative;
+  height: var(--compass-window-height);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.35);
+}
+
+.compass-window::before,
+.compass-window::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  width: 84px;
+  height: 100%;
+  pointer-events: none;
+}
+
+.compass-window::before {
+  left: 0;
+  background: linear-gradient(90deg, rgba(32, 35, 40, 0.95), transparent);
+}
+
+.compass-window::after {
+  right: 0;
+  background: linear-gradient(270deg, rgba(32, 35, 40, 0.95), transparent);
+}
+
+.compass-tape {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 100%;
+  transform: translateX(var(--heading-offset, 0px));
+  transition: none;
+  will-change: transform;
+}
+
+.compass-tape span {
+  position: absolute;
+  top: 18px;
+  left: var(--mark-offset);
+  min-width: 42px;
+  transform: translateX(-50%);
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 20px;
+  text-align: center;
+}
+
+.compass-tape span::before {
+  content: "";
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  width: 2px;
+  height: 9px;
+  transform: translateX(-50%);
+  border-radius: 2px;
+  background: var(--text-muted);
+}
+
+.compass-pointer {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 3;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 16px solid var(--accent-strong);
+  filter: drop-shadow(0 0 12px rgba(78, 205, 196, 0.45));
+}
+
+.altitude {
+  width: var(--altitude-width);
+  height: var(--compass-window-height);
+  align-self: end;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  display: grid;
+  grid-template-rows: 22px 16px;
+  gap: 3px;
+  align-items: center;
+  text-align: right;
+}
+
+.altitude span {
+  display: block;
+  width: 90px;
+  height: 22px;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 850;
+  line-height: 22px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.altitude small {
+  display: block;
+  width: 90px;
+  height: 16px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.content-layer {
+  position: absolute;
+  inset: calc(var(--safe) + var(--hud-height) + var(--gap)) var(--safe) var(--safe);
+  z-index: 1;
+}
+
+.screen {
+  width: 100%;
+  height: 100%;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.screen-loading,
+.screen-empty,
+.screen-completion {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 34px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+h1 {
+  margin: 0;
+  color: var(--text);
+  font-size: 34px;
+  font-weight: 850;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.message {
+  max-width: 440px;
+  margin: 18px 0 0;
+  color: var(--text-soft);
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.screen-checklist {
+  display: grid;
+  grid-template-rows: 42px 1fr 28px;
+  gap: var(--gap);
+  padding: 0;
+}
+
+.checklist-meta,
+.detail-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 22px;
+}
+
+#checklist-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.075);
+  box-shadow: 0 20px 40px var(--shadow);
+}
+
+.step-status {
+  align-self: flex-start;
+  min-width: 96px;
+  margin-bottom: 18px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--warning);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 18px;
+  text-align: center;
+}
+
+.step-status.done {
+  color: var(--success);
+}
+
+#step-title {
+  font-size: 38px;
+  line-height: 1.06;
+}
+
+.step-hint {
+  margin: 22px 0 0;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.progress-rail {
+  overflow: hidden;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.progress-fill {
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--success));
+  transition: width 160ms ease;
+}
+
+.screen-detail {
+  display: grid;
+  grid-template-rows: 28px auto 1fr 48px;
+  gap: var(--gap);
+  padding: 0;
+}
+
+#detail-title {
+  font-size: 24px;
+  line-height: 1.16;
+}
+
+.detail-copy {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.075);
+  color: var(--text-soft);
+  font-size: 23px;
+  line-height: 1.32;
+  scrollbar-width: thin;
+}
+
+.detail-copy.no-detail {
+  display: flex;
+  align-items: center;
+  color: var(--warning);
+  font-weight: 750;
+}
+
+.debug-panel {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 5;
+  width: 214px;
+  padding: 9px 10px;
+  border: 1px solid rgba(78, 205, 196, 0.4);
+  border-radius: 8px;
+  background: rgba(5, 8, 12, 0.84);
+  color: var(--text-soft);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.debug-panel div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.debug-panel strong {
+  color: var(--accent);
+}
+
+@media (max-width: 599px), (max-height: 599px) {
+  html,
+  body {
+    width: 100vw;
+    height: 100vh;
+  }
+
+  .app-shell {
+    width: min(100vw, 600px);
+    height: min(100vh, 600px);
+    transform-origin: top left;
+  }
+}

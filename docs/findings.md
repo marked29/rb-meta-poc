@@ -7,6 +7,8 @@ This document is a living build log. It should be updated after desktop and on-d
 - Official web docs may require login. The first implementation uses the provided requirements and the public Meta Wearables Web App toolkit guidance.
 - The app now loads its default checklist from `data/sample-instructions.json` through `fetch`, then validates and caches it.
 - A production server endpoint is not wired as the default yet, but `?source=server&serverUrl=...` exercises the same validation and cache path.
+- Production server endpoint selection is expected to happen at deploy time by setting `CONFIG.dataSource` and `CONFIG.serverUrl`, or by injecting a deployment-specific config file later.
+- Added `sw.js` to cache the app shell after the first successful HTTP/HTTPS load.
 - Sensor permissions differ by browser and device. The app handles denied or unavailable compass/location by showing explicit unavailable states.
 
 ## Known bugs and limitations
@@ -14,8 +16,9 @@ This document is a living build log. It should be updated after desktop and on-d
 - Compass heading is not validated on real Meta Ray-Ban Display hardware yet.
 - GPS altitude is not validated on real glasses/paired phone yet. The app expects `altitude` to often be `null` and displays `ALT --`.
 - Inverted swipe settings are not auto-detected. The app uses Meta's documented arrow-key parity mapping.
-- The app has no service worker yet. Checklist data is cached in `localStorage`; full app shell offline caching can be added later.
+- Offline shell caching is implemented with `sw.js`, but real offline behavior should still be validated in the target browser/device.
 - Opening the app directly with `file://` is not the preferred path because fetching local JSON may be blocked by browser policy. Use a local static server for desktop testing.
+- Full acceptance testing for server fallback, real sensors, HTTPS deploy, and MRBD gestures is planned as one device/deployment pass.
 
 ## Best practices used
 
@@ -23,6 +26,7 @@ This document is a living build log. It should be updated after desktop and on-d
 - Explicit state machine states: `LOADING`, `EMPTY`, `CHECKLIST`, `DETAIL`, `COMPLETION`.
 - Data validation before rendering.
 - Default data flow uses `fetch` against a JSON file, which mirrors the future server path more closely than an in-code object.
+- Service worker and localStorage are intentionally separate: service worker caches the app shell, localStorage caches validated checklist content and progress.
 - Progress and checklist cache are separate `localStorage` entries.
 - Sensor-driven HUD updates are throttled through `requestAnimationFrame`.
 - A `?debug=1` overlay exposes state and sensor status for on-device diagnosis.
@@ -42,6 +46,6 @@ Record these during MRBD testing:
 ## Recommendations
 
 - Test on real glasses as early as possible because the riskiest behavior is platform-specific.
-- Add a service worker after the checklist and sensor behavior are stable.
 - Add a small diagnostics screen or exportable log if on-device debugging is limited.
 - Consider an owner-facing config file once the server endpoint is known.
+- During deployment, set the production instruction endpoint once and test server/cache/empty states in the same pass as HTTPS and MRBD validation.

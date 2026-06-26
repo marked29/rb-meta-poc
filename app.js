@@ -105,6 +105,7 @@ document.addEventListener("DOMContentLoaded", init);
 function init() {
   elements = collectElements();
   applyQueryFlags();
+  registerServiceWorker();
   bindInput();
   if (CONFIG.debug) {
     elements.debugPanel.classList.remove("hidden");
@@ -125,6 +126,19 @@ function init() {
     state.currentIndex = getFirstOpenIndex();
     state.view = STATES.CHECKLIST;
     render();
+  });
+}
+
+function registerServiceWorker() {
+  if (
+    !("serviceWorker" in navigator) ||
+    (window.location.protocol !== "http:" && window.location.protocol !== "https:")
+  ) {
+    return;
+  }
+
+  navigator.serviceWorker.register("sw.js").catch(function (error) {
+    state.error = "Service worker registration failed: " + error.message;
   });
 }
 

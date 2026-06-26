@@ -15,6 +15,7 @@ Standalone HTML/CSS/JavaScript web app for Meta Ray-Ban Display checklist testin
 - Instructions load from `data/sample-instructions.json` by default.
 - An embedded mock remains available for explicit debug fallback.
 - Compass and altitude support real browser APIs when available, and mock sensors via query flag.
+- A service worker caches the app shell after the first successful HTTP/HTTPS load.
 
 ## Run locally
 
@@ -97,6 +98,7 @@ The app is intentionally static and small:
 - `index.html`: fixed HUD structure.
 - `styles.css`: 600 x 600 MRBD-oriented UI.
 - `app.js`: config, state machine, input routing, data loading, storage, sensors, rendering.
+- `sw.js`: offline app shell cache for HTML/CSS/JS and bundled JSON fixtures.
 
 The current `CONFIG.dataSource` is `local-json`. The default path is now:
 
@@ -105,6 +107,26 @@ data/sample-instructions.json -> validate -> cache -> render
 ```
 
 If local JSON fails, the app tries cached instructions. If the cache is empty, it can use the embedded fallback unless `?disableEmbeddedFallback=1` is present.
+
+Production server URL is expected to be set at deploy time. For testing, use:
+
+```text
+?source=server&serverUrl=https://example.com/instructions.json
+```
+
+For a fixed deployment endpoint, set `CONFIG.dataSource = "server"` and `CONFIG.serverUrl = "..."` in `app.js`, or inject an environment-specific config file in a later iteration.
+
+## Offline behavior
+
+After one successful load over `http://localhost` or HTTPS, `sw.js` caches:
+
+- `index.html`
+- `styles.css`
+- `app.js`
+- `data/sample-instructions.json`
+- `data/malformed-instructions.json`
+
+The service worker keeps the app shell reloadable offline. Validated checklist content and progress are cached separately in `localStorage`.
 
 ## Decisions
 

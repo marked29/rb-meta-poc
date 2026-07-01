@@ -16,6 +16,7 @@ Standalone HTML/CSS/JavaScript web app for Meta Ray-Ban Display checklist testin
 - An embedded mock remains available for explicit debug fallback.
 - Compass and altitude support real browser APIs when available, and mock sensors via query flag.
 - A service worker caches the app shell after the first successful HTTP/HTTPS load.
+- Browser speech APIs are used when available for task title TTS and simple voice commands.
 
 ## Run locally
 
@@ -50,6 +51,24 @@ Set the browser viewport to `600 x 600` and test with arrow keys plus `Enter`.
 - `?source=server&serverUrl=https://example.com/instructions.json`: uses the server-first path.
 - `?mockFetchFail=1`: forces fetch failures for fallback testing.
 - `?disableEmbeddedFallback=1`: disables the embedded fallback so empty-cache states can be tested.
+
+## Browser speech APIs
+
+Voice recognition starts as soon as the checklist loads so the browser can request microphone permission immediately.
+
+- TTS uses `speechSynthesis` to speak the current step title after next/previous, restart, and completion.
+- Voice commands use `SpeechRecognition` / `webkitSpeechRecognition` when available.
+- If either API is unsupported or denied, keyboard/gesture controls continue to work.
+
+Supported voice commands:
+
+- `next` / `next step`
+- `previous` / `previous step` / `prev`
+- `mark done` / `done` / `check`
+- `show details` / `details`
+- `hide details` / `close details`
+
+Use `?debug=1` to see `tts` and `voice` status.
 
 ## Fallback test URLs
 

@@ -11,6 +11,8 @@ var CONFIG = {
   mockSensors: false,
   mockFetchFail: false,
   debug: false,
+  speechRate: 1,
+  speechPitch: 1,
   inputDebounceMs: 120,
   compassPixelsPerDegree: 2.2,
   smoothingFactor: 0.16,
@@ -95,6 +97,13 @@ var state = {
     locationWatchId: null,
     compassRaf: null,
     mockTimer: null
+  },
+  speech: {
+    activated: false,
+    ttsStatus: "unavailable",
+    voiceStatus: "unavailable",
+    recognition: null,
+    restartingRecognition: false
   }
 };
 
@@ -126,6 +135,7 @@ function init() {
     state.currentIndex = getFirstOpenIndex();
     state.view = STATES.CHECKLIST;
     render();
+    activateSpeechFeatures(false);
   });
 }
 
@@ -169,7 +179,9 @@ function collectElements() {
     debugChecked: document.getElementById("debug-checked"),
     debugDataSource: document.getElementById("debug-data-source"),
     debugHeading: document.getElementById("debug-heading"),
-    debugAltitude: document.getElementById("debug-altitude")
+    debugAltitude: document.getElementById("debug-altitude"),
+    debugTts: document.getElementById("debug-tts"),
+    debugVoice: document.getElementById("debug-voice")
   };
 }
 
@@ -219,6 +231,7 @@ function bindInput() {
     state.lastInputAt = now;
 
     requestCompassPermissionIfNeeded();
+    activateSpeechFeatures();
 
     if (state.view === STATES.LOADING) {
       return;
@@ -270,8 +283,13 @@ function moveStep(delta) {
   }
 
   var max = state.checklist.instructions.length - 1;
-  state.currentIndex = clamp(state.currentIndex + delta, 0, max);
+  var nextIndex = clamp(state.currentIndex + delta, 0, max);
+  var didMove = nextIndex !== state.currentIndex;
+  state.currentIndex = nextIndex;
   render();
+  if (didMove) {
+    speakCurrentStep();
+  }
 }
 
 function toggleCurrentStep() {
@@ -285,6 +303,9 @@ function toggleCurrentStep() {
 
   if (isChecklistComplete()) {
     state.view = STATES.COMPLETION;
+    speakText("All steps complete.");
+  } else {
+    speakCurrentStep();
   }
 
   render();
@@ -296,6 +317,7 @@ function restartChecklist() {
   clearProgress();
   state.view = STATES.CHECKLIST;
   render();
+  speakCurrentStep();
 }
 
 function getCurrentItem() {
@@ -454,6 +476,162 @@ function renderDebug() {
     typeof state.sensors.altitude === "number"
       ? Math.round(state.sensors.altitude) + " m"
       : state.sensors.altitudeStatus;
+  elements.debugTts.textContent = state.speech.ttsStatus;
+  elements.debugVoice.textContent = state.speech.voiceStatus;
+}
+
+function activateSpeechFeatures(speakOnStart) {
+  if (state.speech.activated) {
+    return;
+  }
+
+  state.speech.activated = true;
+  initSpeechOutput();
+  initVoiceInput();
+  if (speakOnStart !== false) {
+    speakCurrentStep();
+  }
+  renderDebug();
+}
+
+function initSpeechOutput() {
+  state.speech.ttsStatus =
+    "speechSynthesis" in window && "SpeechSynthesisUtterance" in window
+      ? "available"
+      : "unavailable";
+}
+
+function speakCurrentStep() {
+  var item = getCurrentItem();
+  if (!item) {
+    return;
+  }
+  speakText(item.title);
+}
+
+function speakText(text) {
+  if (!state.speech.activated || state.speech.ttsStatus !== "available") {
+    return;
+  }
+
+  window.speechSynthesis.cancel();
+  var utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = CONFIG.speechRate;
+  utterance.pitch = CONFIG.speechPitch;
+  window.speechSynthesis.speak(utterance);
+}
+
+function initVoiceInput() {
+  var Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Recognition) {
+    state.speech.voiceStatus = "unsupported";
+    return;
+  }
+
+  var recognition = new Recognition();
+  recognition.lang = "en-US";
+  recognition.continuous = true;
+  recognition.interimResults = false;
+
+  recognition.onstart = function () {
+    state.speech.voiceStatus = "listening";
+    renderDebug();
+  };
+
+  recognition.onerror = function (event) {
+    state.speech.voiceStatus = event.error || "error";
+    renderDebug();
+  };
+
+  recognition.onend = function () {
+    if (
+      !state.speech.activated ||
+      state.speech.restartingRecognition ||
+      state.speech.voiceStatus === "not-allowed" ||
+      state.speech.voiceStatus === "service-not-allowed"
+    ) {
+      return;
+    }
+
+    state.speech.voiceStatus = "restarting";
+    state.speech.restartingRecognition = true;
+    window.setTimeout(function () {
+      state.speech.restartingRecognition = false;
+      startVoiceRecognition();
+    }, 300);
+    renderDebug();
+  };
+
+  recognition.onresult = function (event) {
+    var result = event.results[event.results.length - 1];
+    if (!result || !result[0]) {
+      return;
+    }
+
+    handleVoiceCommand(result[0].transcript);
+  };
+
+  state.speech.recognition = recognition;
+  startVoiceRecognition();
+}
+
+function startVoiceRecognition() {
+  if (!state.speech.recognition) {
+    return;
+  }
+
+  try {
+    state.speech.recognition.start();
+  } catch (error) {
+    state.speech.voiceStatus = "start failed";
+    renderDebug();
+  }
+}
+
+function handleVoiceCommand(transcript) {
+  var command = normalizeVoiceCommand(transcript);
+
+  if (command === "next" || command === "next step") {
+    if (state.view === STATES.CHECKLIST) {
+      moveStep(1);
+    }
+  } else if (
+    command === "previous" ||
+    command === "previous step" ||
+    command === "prev"
+  ) {
+    if (state.view === STATES.CHECKLIST) {
+      moveStep(-1);
+    }
+  } else if (
+    command === "mark done" ||
+    command === "done" ||
+    command === "check"
+  ) {
+    if (state.view === STATES.CHECKLIST) {
+      toggleCurrentStep();
+    } else if (state.view === STATES.COMPLETION) {
+      restartChecklist();
+    }
+  } else if (command === "show details" || command === "details") {
+    if (state.view === STATES.CHECKLIST) {
+      state.view = STATES.DETAIL;
+      render();
+    }
+  } else if (command === "hide details" || command === "close details") {
+    if (state.view === STATES.DETAIL) {
+      state.view = STATES.CHECKLIST;
+      render();
+    }
+  }
+}
+
+function normalizeVoiceCommand(value) {
+  return String(value)
+    .toLowerCase()
+    .replace(/[^a-z ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function getCheckedCount() {
@@ -944,5 +1122,12 @@ window.addEventListener("pagehide", function () {
   }
   if (state.sensors.mockTimer !== null) {
     window.cancelAnimationFrame(state.sensors.mockTimer);
+  }
+  if (state.speech.recognition) {
+    state.speech.activated = false;
+    state.speech.recognition.stop();
+  }
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
   }
 });

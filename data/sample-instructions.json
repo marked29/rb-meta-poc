@@ -16,7 +16,11 @@
     {
       "id": "step-03",
       "title": "Confirm all fasteners are present",
-      "details": null
+      "details": null,
+      "image": {
+        "src": "public/fasteners.png",
+        "alt": "Fasteners inspection reference"
+      }
     },
     {
       "id": "step-04",

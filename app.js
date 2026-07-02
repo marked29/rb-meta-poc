@@ -43,7 +43,11 @@ var SAMPLE_INSTRUCTIONS = {
     {
       id: "step-03",
       title: "Confirm all fasteners are present",
-      details: null
+      details: null,
+      image: {
+        src: "public/fasteners.png",
+        alt: "Fasteners inspection reference"
+      }
     },
     {
       id: "step-04",
@@ -402,12 +406,22 @@ function renderDetail() {
 
   var total = state.checklist.instructions.length;
   var details = typeof item.details === "string" ? item.details.trim() : "";
+  var image = item.image && item.image.src ? item.image : null;
 
   elements.detailPosition.textContent = state.currentIndex + 1 + " / " + total;
   elements.detailTitle.textContent = item.title;
-  elements.detailCopy.textContent =
-    details || "No additional details for this step.";
-  elements.detailCopy.classList.toggle("no-detail", !details);
+  elements.detailCopy.classList.toggle("image-detail", Boolean(image));
+  elements.detailCopy.classList.toggle("no-detail", !details && !image);
+
+  if (image) {
+    var imageElement = document.createElement("img");
+    imageElement.src = image.src;
+    imageElement.alt = image.alt || item.title;
+    elements.detailCopy.replaceChildren(imageElement);
+  } else {
+    elements.detailCopy.textContent =
+      details || "No additional details for this step.";
+  }
 }
 
 function renderHud() {
@@ -518,6 +532,20 @@ function speakText(text) {
   var utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = CONFIG.speechRate;
   utterance.pitch = CONFIG.speechPitch;
+  utterance.onstart = function () {
+    state.speech.ttsStatus = "speaking";
+    renderDebug();
+  };
+  utterance.onend = function () {
+    state.speech.ttsStatus = "available";
+    renderDebug();
+  };
+  utterance.onerror = function (event) {
+    state.speech.ttsStatus = event.error || "tts error";
+    renderDebug();
+  };
+  state.speech.ttsStatus = "queued";
+  renderDebug();
   window.speechSynthesis.speak(utterance);
 }
 
@@ -789,7 +817,8 @@ function validateInstructions(raw) {
           ? item.details
           : item.details === null
             ? null
-            : undefined
+            : undefined,
+      image: normalizeInstructionImage(item.image)
     });
   }
 
@@ -808,6 +837,17 @@ function invalid(reason) {
   return {
     valid: false,
     reason: reason
+  };
+}
+
+function normalizeInstructionImage(image) {
+  if (!image || typeof image !== "object" || !isNonEmptyString(image.src)) {
+    return undefined;
+  }
+
+  return {
+    src: image.src.trim(),
+    alt: isNonEmptyString(image.alt) ? image.alt.trim() : ""
   };
 }
 

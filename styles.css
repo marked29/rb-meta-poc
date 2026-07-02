@@ -367,6 +367,19 @@ h1 {
   font-weight: 750;
 }
 
+.detail-copy.image-detail {
+  overflow: hidden;
+  padding: 0;
+}
+
+.detail-copy.image-detail img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
 .debug-panel {
   position: absolute;
   right: 8px;

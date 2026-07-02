@@ -1,13 +1,14 @@
 "use strict";
 
-var CACHE_NAME = "mrbd-field-checklist-v1";
+var CACHE_NAME = "mrbd-field-checklist-v3";
 var APP_SHELL = [
   "./",
   "index.html",
   "styles.css",
   "app.js",
   "data/sample-instructions.json",
-  "data/malformed-instructions.json"
+  "data/malformed-instructions.json",
+  "public/fasteners.png"
 ];
 
 self.addEventListener("install", function (event) {

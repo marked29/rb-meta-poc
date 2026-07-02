@@ -4,7 +4,7 @@ Standalone HTML/CSS/JavaScript web app for Meta Ray-Ban Display checklist testin
 
 ## Current scope
 
-- Vanilla static app, no build step.
+- Vanilla static app, no bundler or compile step.
 - 600 x 600 HUD layout.
 - Keyboard parity input:
   - `ArrowLeft`: previous item
@@ -31,6 +31,21 @@ Open:
 ```text
 http://localhost:8080/
 ```
+
+## Deploy on Vercel
+
+This app is deployed as a static site. The included `vercel.json` forces Vercel
+to run the static build and serve the generated `dist/` directory.
+
+Vercel project settings:
+
+- Framework Preset: `Other`
+- Build Command: `npm run build`
+- Output Directory: `dist`
+- Root Directory: the folder containing this `README.md`
+
+If the deployed URL shows Vercel's 404 page, check that the project root is this
+app folder and that the Output Directory has not been overridden to `public`.
 
 For deterministic desktop testing:
 

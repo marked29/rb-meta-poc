@@ -1,6 +1,6 @@
 "use strict";
 
-var CACHE_NAME = "mrbd-field-checklist-v3";
+var CACHE_NAME = "mrbd-field-checklist-v10";
 var APP_SHELL = [
   "./",
   "index.html",

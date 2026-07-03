@@ -11,6 +11,7 @@ var CONFIG = {
   mockSensors: false,
   mockFetchFail: false,
   debug: false,
+  enableAltitude: false,
   speechRate: 1,
   speechPitch: 1,
   inputDebounceMs: 120,
@@ -107,7 +108,14 @@ var state = {
     ttsStatus: "unavailable",
     voiceStatus: "unavailable",
     recognition: null,
-    restartingRecognition: false
+    restartingRecognition: false,
+    pendingTimer: null,
+    pendingStepKey: "",
+    lastSpokenStepKey: "",
+    lastTranscript: "",
+    lastCommand: "",
+    speechToken: 0,
+    consentVisible: false
   }
 };
 
@@ -139,7 +147,7 @@ function init() {
     state.currentIndex = getFirstOpenIndex();
     state.view = STATES.CHECKLIST;
     render();
-    activateSpeechFeatures(false);
+    showSpeechConsent();
   });
 }
 
@@ -177,6 +185,8 @@ function collectElements() {
     detailPosition: document.getElementById("detail-position"),
     detailTitle: document.getElementById("detail-title"),
     detailCopy: document.getElementById("detail-copy"),
+    speechConsent: document.getElementById("speech-consent"),
+    speechConsentButton: document.getElementById("speech-consent-button"),
     debugPanel: document.getElementById("debug-panel"),
     debugState: document.getElementById("debug-state"),
     debugIndex: document.getElementById("debug-index"),
@@ -185,7 +195,9 @@ function collectElements() {
     debugHeading: document.getElementById("debug-heading"),
     debugAltitude: document.getElementById("debug-altitude"),
     debugTts: document.getElementById("debug-tts"),
-    debugVoice: document.getElementById("debug-voice")
+    debugVoice: document.getElementById("debug-voice"),
+    debugTranscript: document.getElementById("debug-transcript"),
+    debugCommand: document.getElementById("debug-command")
   };
 }
 
@@ -195,6 +207,8 @@ function applyQueryFlags() {
   CONFIG.debug = params.get("debug") === "1";
   CONFIG.mockSensors =
     params.get("mockSensors") === "1" || params.get("mocksensors") === "1";
+  CONFIG.enableAltitude =
+    params.get("altitude") === "1" || params.get("enableAltitude") === "1";
 
   if (params.get("source")) {
     CONFIG.dataSource = params.get("source");
@@ -213,6 +227,8 @@ function applyQueryFlags() {
 }
 
 function bindInput() {
+  elements.speechConsentButton.addEventListener("click", acceptSpeechConsent);
+
   window.addEventListener("keydown", function (event) {
     var key = event.key;
     var isHandledKey =
@@ -228,21 +244,55 @@ function bindInput() {
 
     event.preventDefault();
 
-    var now = Date.now();
-    if (event.repeat || now - state.lastInputAt < CONFIG.inputDebounceMs) {
+    if (event.repeat) {
       return;
     }
-    state.lastInputAt = now;
+
+    if (state.speech.consentVisible) {
+      if (key === "Enter") {
+        acceptSpeechConsent();
+      }
+      return;
+    }
 
     requestCompassPermissionIfNeeded();
-    activateSpeechFeatures();
+    activateSpeechFeatures(false);
 
     if (state.view === STATES.LOADING) {
       return;
     }
 
+    var now = Date.now();
+    if (key === "Enter" && now - state.lastInputAt < CONFIG.inputDebounceMs) {
+      return;
+    }
+    if (key === "Enter") {
+      state.lastInputAt = now;
+    }
+
     routeInput(key);
   });
+}
+
+function showSpeechConsent() {
+  if (!state.checklist || state.speech.activated) {
+    return;
+  }
+
+  state.speech.consentVisible = true;
+  elements.speechConsent.classList.remove("hidden");
+  elements.speechConsentButton.focus();
+}
+
+function acceptSpeechConsent() {
+  if (!state.speech.consentVisible) {
+    return;
+  }
+
+  state.speech.consentVisible = false;
+  elements.speechConsent.classList.add("hidden");
+  requestCompassPermissionIfNeeded();
+  activateSpeechFeatures(true);
 }
 
 function routeInput(key) {
@@ -288,12 +338,12 @@ function moveStep(delta) {
 
   var max = state.checklist.instructions.length - 1;
   var nextIndex = clamp(state.currentIndex + delta, 0, max);
-  var didMove = nextIndex !== state.currentIndex;
+  if (nextIndex === state.currentIndex) {
+    return;
+  }
   state.currentIndex = nextIndex;
   render();
-  if (didMove) {
-    speakCurrentStep();
-  }
+  queueCurrentStepSpeech();
 }
 
 function toggleCurrentStep() {
@@ -308,8 +358,6 @@ function toggleCurrentStep() {
   if (isChecklistComplete()) {
     state.view = STATES.COMPLETION;
     speakText("All steps complete.");
-  } else {
-    speakCurrentStep();
   }
 
   render();
@@ -321,7 +369,7 @@ function restartChecklist() {
   clearProgress();
   state.view = STATES.CHECKLIST;
   render();
-  speakCurrentStep();
+  queueCurrentStepSpeech();
 }
 
 function getCurrentItem() {
@@ -492,6 +540,8 @@ function renderDebug() {
       : state.sensors.altitudeStatus;
   elements.debugTts.textContent = state.speech.ttsStatus;
   elements.debugVoice.textContent = state.speech.voiceStatus;
+  elements.debugTranscript.textContent = state.speech.lastTranscript || "-";
+  elements.debugCommand.textContent = state.speech.lastCommand || "-";
 }
 
 function activateSpeechFeatures(speakOnStart) {
@@ -520,33 +570,91 @@ function speakCurrentStep() {
   if (!item) {
     return;
   }
-  speakText(item.title);
+  if (speakText(item.title)) {
+    state.speech.lastSpokenStepKey = getStepSpeechKey(item);
+  }
+}
+
+function queueCurrentStepSpeech() {
+  var item = getCurrentItem();
+  if (!item || state.view !== STATES.CHECKLIST) {
+    return;
+  }
+
+  var stepKey = getStepSpeechKey(item);
+  state.speech.pendingStepKey = stepKey;
+
+  if (state.speech.pendingTimer !== null) {
+    window.clearTimeout(state.speech.pendingTimer);
+  }
+
+  state.speech.pendingTimer = window.setTimeout(function () {
+    state.speech.pendingTimer = null;
+    speakCurrentStepIfStillActive(stepKey);
+  }, CONFIG.inputDebounceMs);
+}
+
+function speakCurrentStepIfStillActive(expectedStepKey) {
+  var item = getCurrentItem();
+  if (
+    !item ||
+    state.view !== STATES.CHECKLIST ||
+    expectedStepKey !== state.speech.pendingStepKey ||
+    expectedStepKey === state.speech.lastSpokenStepKey
+  ) {
+    return;
+  }
+
+  speakCurrentStep();
+}
+
+function getStepSpeechKey(item) {
+  return state.currentIndex + ":" + item.id + ":" + item.title;
 }
 
 function speakText(text) {
-  if (!state.speech.activated || state.speech.ttsStatus !== "available") {
-    return;
+  if (
+    !state.speech.activated ||
+    !("speechSynthesis" in window) ||
+    !("SpeechSynthesisUtterance" in window)
+  ) {
+    state.speech.ttsStatus = "unavailable";
+    renderDebug();
+    return false;
   }
+
+  state.speech.speechToken += 1;
+  var speechToken = state.speech.speechToken;
 
   window.speechSynthesis.cancel();
   var utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = CONFIG.speechRate;
   utterance.pitch = CONFIG.speechPitch;
   utterance.onstart = function () {
+    if (speechToken !== state.speech.speechToken) {
+      return;
+    }
     state.speech.ttsStatus = "speaking";
     renderDebug();
   };
   utterance.onend = function () {
+    if (speechToken !== state.speech.speechToken) {
+      return;
+    }
     state.speech.ttsStatus = "available";
     renderDebug();
   };
   utterance.onerror = function (event) {
+    if (speechToken !== state.speech.speechToken) {
+      return;
+    }
     state.speech.ttsStatus = event.error || "tts error";
     renderDebug();
   };
   state.speech.ttsStatus = "queued";
   renderDebug();
   window.speechSynthesis.speak(utterance);
+  return true;
 }
 
 function initVoiceInput() {
@@ -618,40 +726,69 @@ function startVoiceRecognition() {
 
 function handleVoiceCommand(transcript) {
   var command = normalizeVoiceCommand(transcript);
+  var intent = getVoiceCommandIntent(command);
 
-  if (command === "next" || command === "next step") {
+  state.speech.lastTranscript = String(transcript || "").trim();
+  state.speech.lastCommand = intent || command || "unmatched";
+  renderDebug();
+
+  if (intent === "next") {
     if (state.view === STATES.CHECKLIST) {
       moveStep(1);
     }
-  } else if (
-    command === "previous" ||
-    command === "previous step" ||
-    command === "prev"
-  ) {
+  } else if (intent === "previous") {
     if (state.view === STATES.CHECKLIST) {
       moveStep(-1);
     }
-  } else if (
-    command === "mark done" ||
-    command === "done" ||
-    command === "check"
-  ) {
+  } else if (intent === "done") {
     if (state.view === STATES.CHECKLIST) {
       toggleCurrentStep();
     } else if (state.view === STATES.COMPLETION) {
       restartChecklist();
     }
-  } else if (command === "show details" || command === "details") {
+  } else if (intent === "show-details") {
     if (state.view === STATES.CHECKLIST) {
       state.view = STATES.DETAIL;
       render();
     }
-  } else if (command === "hide details" || command === "close details") {
+  } else if (intent === "hide-details") {
     if (state.view === STATES.DETAIL) {
       state.view = STATES.CHECKLIST;
       render();
     }
   }
+}
+
+function getVoiceCommandIntent(command) {
+  var words = command.split(" ").filter(Boolean);
+  var hasWord = function (word) {
+    return words.indexOf(word) !== -1;
+  };
+
+  if (
+    command === "hide details" ||
+    command === "hide detail" ||
+    command === "close details" ||
+    command === "close detail" ||
+    (hasWord("hide") && (hasWord("details") || hasWord("detail"))) ||
+    (hasWord("close") && (hasWord("details") || hasWord("detail")))
+  ) {
+    return "hide-details";
+  }
+  if (hasWord("next")) {
+    return "next";
+  }
+  if (hasWord("previous") || hasWord("prev") || hasWord("back")) {
+    return "previous";
+  }
+  if (hasWord("done") || hasWord("check") || command === "mark done") {
+    return "done";
+  }
+  if (command === "show details" || hasWord("details") || hasWord("detail")) {
+    return "show-details";
+  }
+
+  return "";
 }
 
 function normalizeVoiceCommand(value) {
@@ -955,7 +1092,12 @@ function startSensors() {
   }
 
   startCompass();
-  startAltitudeWatch();
+  if (CONFIG.enableAltitude) {
+    startAltitudeWatch();
+  } else {
+    state.sensors.altitudeStatus = "disabled";
+    renderHud();
+  }
 }
 
 function startCompass() {
@@ -1088,6 +1230,9 @@ function startAltitudeWatch() {
             : error.code === error.TIMEOUT
               ? "timeout"
               : "unavailable";
+        if (error.code === error.POSITION_UNAVAILABLE) {
+          stopAltitudeWatch();
+        }
         scheduleHudRender();
       },
       CONFIG.geolocation
@@ -1096,6 +1241,15 @@ function startAltitudeWatch() {
     state.sensors.altitudeStatus = "error";
     renderHud();
   }
+}
+
+function stopAltitudeWatch() {
+  if (state.sensors.locationWatchId === null || !("geolocation" in navigator)) {
+    return;
+  }
+
+  navigator.geolocation.clearWatch(state.sensors.locationWatchId);
+  state.sensors.locationWatchId = null;
 }
 
 function startMockSensors() {

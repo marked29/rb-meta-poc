@@ -59,6 +59,7 @@ Set the browser viewport to `600 x 600` and test with arrow keys plus `Enter`.
 
 - `?debug=1`: shows state, index, checked count, data source, heading, and altitude.
 - `?mockSensors=1`: simulates compass heading and altitude.
+- `?altitude=1` / `?enableAltitude=1`: enables real geolocation altitude lookup.
 - `?reset=1`: clears cached instructions and progress.
 - `?source=local-json`: loads from `data/sample-instructions.json` through `fetch` (default).
 - `?localUrl=data/sample-instructions.json`: changes the local JSON URL.
@@ -69,11 +70,12 @@ Set the browser viewport to `600 x 600` and test with arrow keys plus `Enter`.
 
 ## Browser speech APIs
 
-Voice recognition starts as soon as the checklist loads so the browser can request microphone permission immediately.
+Voice recognition and TTS activate after the first keyboard/voice-compatible user input so browser speech permissions are requested from a user gesture.
 
 - TTS uses `speechSynthesis` to speak the current step title after next/previous, restart, and completion.
 - Voice commands use `SpeechRecognition` / `webkitSpeechRecognition` when available.
 - If either API is unsupported or denied, keyboard/gesture controls continue to work.
+- Real altitude is disabled by default to avoid desktop CoreLocation errors during voice testing. Use `?altitude=1` when the device location signal is needed.
 
 Supported voice commands:
 

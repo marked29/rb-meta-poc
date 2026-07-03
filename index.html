@@ -12,10 +12,10 @@
     >
     <meta name="mrbd-compatible" content="yes">
     <title>MRBD Field Checklist</title>
-    <link rel="stylesheet" href="styles.css?v=layout-20">
+    <link rel="stylesheet" href="styles.css?v=voice-9">
   </head>
   <body>
-    <main class="app-shell" aria-live="polite">
+    <main class="app-shell">
       <header class="hud-layer">
         <section class="compass" aria-label="Compass">
           <div class="compass-status" id="compass-status">COMPASS --</div>
@@ -108,9 +108,30 @@
         <div><strong>alt</strong> <span id="debug-altitude">-</span></div>
         <div><strong>tts</strong> <span id="debug-tts">-</span></div>
         <div><strong>voice</strong> <span id="debug-voice">-</span></div>
+        <div><strong>heard</strong> <span id="debug-transcript">-</span></div>
+        <div><strong>cmd</strong> <span id="debug-command">-</span></div>
       </aside>
+
+      <section
+        class="speech-consent hidden"
+        id="speech-consent"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="speech-consent-title"
+      >
+        <div class="speech-consent-panel">
+          <p class="eyebrow">VOICE OUTPUT</p>
+          <h1 id="speech-consent-title">This checklist will speak task titles</h1>
+          <p class="message">
+            Audio starts after confirmation and may be interrupted when you move between tasks.
+          </p>
+          <button class="primary-action" id="speech-consent-button" type="button">
+            OK
+          </button>
+        </div>
+      </section>
     </main>
 
-    <script src="app.js?v=media-1"></script>
+    <script src="app.js?v=voice-9"></script>
   </body>
 </html>
